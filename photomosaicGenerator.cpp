@@ -6,9 +6,6 @@
 using namespace cv;
 using namespace std;
 
-const int WIDTH = 32;
-const int HEIGHT = 18;
-
 struct CompareByMeanGray{
 	bool operator()(const pair<Mat, double>& a, const pair<Mat, double>& b) const {
 		return a.second < b.second;
@@ -23,38 +20,24 @@ Mat FindMosaic(set<pair<Mat, double>, CompareByMeanGray> &photosSet, double gray
 	return it->first;
 }
 
-int main(){
+Mat generate(string mainImagePath, set<string> tilesPaths, int WIDTH, int HEIGHT) {
 
 	//Cargar las imagenes mosaicos, pasar a escala de grises, obtener su valor de gris y ordenarlas en un set
-	pair<Mat,double> photos[10];
+	set<pair<Mat,double>, CompareByMeanGray> photosSet;
 
-	for(int i = 0; i<10; i++){
-		stringstream ss;
-		ss << "photos/" << i+1 << ".jpeg";
-		Mat photo = imread(ss.str(), IMREAD_COLOR);
+	for(string tilePath : tilesPaths){
+		Mat photo = imread(tilePath, IMREAD_COLOR);
 		if(photo.empty()){
-			cerr << "Error al cargar la imagen: " << ss.str() << endl;
-			return -1;
+			cerr << "Error al cargar la imagen: " << tilePath << endl;
+			return Mat();
 		}
 		Mat copy;
 		cvtColor(photo, copy, COLOR_BGR2GRAY);
 		double meanGray = mean(copy)[0];
-		photos[i] = make_pair(photo, meanGray);
+		photosSet.insert(make_pair(photo, meanGray));
 	}
 
-	set<pair<Mat,double>, CompareByMeanGray> photosSet;
-	for(int i = 0; i<10; i++){
-		photosSet.insert(photos[i]);
-	}
-
-
-	
-
-
-
-
-
-	Mat original = imread("photos/image.jpg", IMREAD_COLOR);
+	Mat original = imread(mainImagePath, IMREAD_COLOR);
 	imshow("Ventana", original);
 	waitKey(0);
 
@@ -62,10 +45,6 @@ int main(){
 	Mat photoMosaic = Mat::zeros(original.size(), original.type());
 	int numBlockRows = ceil((double)original.rows / HEIGHT);
 	int numBlockCols = ceil((double)original.cols / WIDTH);
-	double** grayValues = new double*[numBlockRows];
-	for (int i = 0; i < numBlockRows; ++i) {
-		grayValues[i] = new double[numBlockCols];
-	}
 
 	for(int i = 0; i<original.rows; i+=HEIGHT){
 		for(int j = 0; j<original.cols; j+=WIDTH){
@@ -75,7 +54,7 @@ int main(){
 			Rect roiRect(j, i, blockWidth, blockHeight);
 			if(roiRect.x < 0 || roiRect.y < 0 || roiRect.x + roiRect.width > original.cols || roiRect.y + roiRect.height > original.rows) {
 				cerr << "Error: ROI fuera de los límites de la imagen." << endl;
-				return -1;
+				return Mat();
 				//Depuracion
 			}
 			Mat roi = original(roiRect);
@@ -85,7 +64,6 @@ int main(){
 
 			Scalar meanGray = mean(grayBlock);
 			double grayValue = meanGray[0];
-			grayValues[i/HEIGHT][j/WIDTH] = grayValue;
 			Mat mosaic = FindMosaic(photosSet, grayValue);
 			resize(mosaic, mosaic, Size(blockWidth, blockHeight));
 			mosaic.copyTo(photoMosaic(roiRect));
@@ -94,16 +72,10 @@ int main(){
 			filledBlock.copyTo(result(roiRect));
 
 			
-			imshow("Result", result);
+			//imshow("Result", result);
 
 		}
 	}
-	waitKey(0);
-	imshow("Photo Mosaic", photoMosaic);
-	waitKey(0);
-	for (int i = 0; i < numBlockRows; ++i) {
-		delete[] grayValues[i];
-	}
-	delete[] grayValues;
 
+	return photoMosaic;
 }

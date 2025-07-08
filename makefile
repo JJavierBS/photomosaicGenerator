@@ -1,7 +1,9 @@
 TARGET = a
-SRC = photomosaicGenerator.cpp
-CFLAGS = `pkg-config --cflags opencv4`
-LIBS = `pkg-config --libs opencv4`
+SRC = main.cpp photomosaicGenerator.cpp
+
+CFLAGS = -fPIC `pkg-config --cflags opencv4 Qt5Widgets`
+LIBS = `pkg-config --libs opencv4 Qt5Widgets`
+
 all: $(TARGET)
 
 $(TARGET): $(SRC)
@@ -9,3 +11,4 @@ $(TARGET): $(SRC)
 
 clean:
 	rm -f $(TARGET)
+
